@@ -3,16 +3,38 @@ import * as p from '@clack/prompts';
 import fs from 'fs';
 import path from 'path';
 
-// Definición de colores premium para la presentación
-const COLORS = {
-  bgLight: 'F8FAFC',       // Slate 50 (fondo claro)
-  bgDark: '0F172A',        // Slate 900 (fondo oscuro para portada)
-  primaryText: '334155',   // Slate 700 (texto principal)
-  secondaryText: '64748B', // Slate 500 (subtítulos)
-  accent: '4F46E5',        // Indigo 600 (color de acento)
-  accentLight: 'A5B4FC',   // Indigo 300 (acento claro para portada)
-  white: 'FFFFFF',
-  border: 'E2E8F0'
+// Definición de temas de colores premium para la presentación
+const THEMES = {
+  classic: {
+    bgLight: 'FFFFFF',
+    bgDark: '0F172A',
+    primaryText: '1E293B',
+    secondaryText: '475569',
+    accent: '1E3A8A',
+    accentLight: '93C5FD',
+    white: 'FFFFFF',
+    border: 'E2E8F0'
+  },
+  minimalist: {
+    bgLight: '121212',
+    bgDark: '1E1E1E',
+    primaryText: 'E2E8F0',
+    secondaryText: '94A3B8',
+    accent: 'A855F7',
+    accentLight: '22D3EE',
+    white: 'FFFFFF',
+    border: '334155'
+  },
+  corporate: {
+    bgLight: 'F3F4F6',
+    bgDark: '111827',
+    primaryText: '1F2937',
+    secondaryText: '4B5563',
+    accent: '059669',
+    accentLight: 'A7F3D0',
+    white: 'FFFFFF',
+    border: 'D1D5DB'
+  }
 };
 
 /**
@@ -21,12 +43,16 @@ const COLORS = {
  * @param {string} presentationTitle - Título de la presentación
  * @param {Object} imageMap - Mapa de { rutaOriginal: rutaLocalTemporal }
  * @param {string} outputPath - Nombre del archivo final a guardar
+ * @param {string} themeName - Nombre del tema visual seleccionado
+ * @param {Function} onProgress - Callback para notificar el progreso de procesamiento
  */
-export async function generatePresentation(data, presentationTitle, imageMap, outputPath = 'presentacion.pptx', onProgress) {
+export async function generatePresentation(data, presentationTitle, imageMap, outputPath = 'presentacion.pptx', themeName = 'classic', onProgress) {
   const pres = new pptxgen();
   
   // Configurar dimensiones a 16:9
   pres.layout = 'LAYOUT_16x9';
+  
+  const COLORS = THEMES[themeName] || THEMES.classic;
   
   // -------------------------------------------------------------
   // DIAPOSITIVA 1: Portada (Estilo Premium Minimalista Oscuro)
@@ -124,11 +150,11 @@ export async function generatePresentation(data, presentationTitle, imageMap, ou
         try {
           slide.addImage({
             path: localImgPath,
-            x: 0.6,
+            x: 1.0,
             y: 1.2,
-            w: 8.8,
+            w: 8.0,
             h: 3.4,
-            sizing: { type: 'contain', w: 8.8, h: 3.4 }
+            sizing: { type: 'contain', w: 8.0, h: 3.4 }
           });
         } catch (err) {
           p.log.warn(`[WARN] No se pudo renderizar la imagen "${localImgPath}" en la diapositiva: ${err.message}`);
@@ -139,9 +165,9 @@ export async function generatePresentation(data, presentationTitle, imageMap, ou
       const captionText = slideData.bullets && slideData.bullets.length > 0 ? slideData.bullets[0] : '';
       if (captionText) {
         slide.addText(captionText, {
-          x: 0.6,
+          x: 1.0,
           y: 4.7,
-          w: 8.8,
+          w: 8.0,
           h: 0.5,
           color: COLORS.secondaryText,
           fontSize: 13,
@@ -154,10 +180,10 @@ export async function generatePresentation(data, presentationTitle, imageMap, ou
       
     } else if (hasImage) {
       // -------------------------------------------------------------
-      // LAYOUT DE 2 COLUMNAS (Texto izquierda, Imagen derecha con aspect ratio)
+      // LAYOUT DE 2 COLUMNAS (Texto 40% izquierda, Imagen 55% derecha)
       // -------------------------------------------------------------
       
-      // Columna de Viñetas
+      // Columna de Viñetas (40% del ancho)
       const bulletPoints = slideData.bullets.map((bulletText, bIdx) => ({
         text: bulletText,
         options: {
@@ -171,22 +197,23 @@ export async function generatePresentation(data, presentationTitle, imageMap, ou
       }));
       
       slide.addText(bulletPoints, {
-        x: 0.6,
+        x: 0.5,
         y: 1.4,
-        w: 5.2,
+        w: 4.0,
         h: 3.6,
-        valign: 'top'
+        valign: 'top',
+        margin: 0
       });
       
-      // Columna de Imagen (con un sutil borde y centrado)
+      // Columna de Imagen (55% del ancho, a la derecha)
       try {
         slide.addImage({
           path: localImgPath,
-          x: 6.0,
+          x: 4.5,
           y: 1.4,
-          w: 3.4,
-          h: 3.4,
-          sizing: { type: 'contain', w: 3.4, h: 3.4 }
+          w: 5.5,
+          h: 3.6,
+          sizing: { type: 'contain', w: 5.5, h: 3.6 }
         });
       } catch (err) {
         p.log.warn(`[WARN] No se pudo renderizar la imagen "${localImgPath}" en la diapositiva: ${err.message}`);
@@ -194,7 +221,7 @@ export async function generatePresentation(data, presentationTitle, imageMap, ou
       
     } else {
       // -------------------------------------------------------------
-      // LAYOUT DE 1 COLUMNA (Texto centrado/ancho completo)
+      // LAYOUT DE 1 COLUMNA (Texto 80% centrado)
       // -------------------------------------------------------------
       const bulletPoints = slideData.bullets.map((bulletText, bIdx) => ({
         text: bulletText,
@@ -209,11 +236,12 @@ export async function generatePresentation(data, presentationTitle, imageMap, ou
       }));
       
       slide.addText(bulletPoints, {
-        x: 0.6,
+        x: 1.0,
         y: 1.4,
-        w: 8.8,
+        w: 8.0,
         h: 3.6,
-        valign: 'top'
+        valign: 'top',
+        margin: 0
       });
     }
     
@@ -258,20 +286,14 @@ export async function generatePresentation(data, presentationTitle, imageMap, ou
     } catch (err) {
       const isLocked = err.code === 'EBUSY' || err.code === 'EACCES' || err.message.includes('busy or locked');
       if (isLocked) {
-        const timestamp = new Date().toISOString().slice(0, 19).replace(/T/, '_').replace(/[-:]/g, '');
-        const baseName = savedName.replace(/\.pptx$/, '');
-        const fallbackName = `${baseName}_${timestamp}.pptx`;
-        
-        const newName = await p.text({
-          message: `El archivo "${savedName}" esta bloqueado. Cierralo o escribe un nuevo nombre para guardar:`,
-          placeholder: fallbackName,
-          defaultValue: fallbackName
+        const confirmRetry = await p.text({
+          message: `[WARN] El archivo ${savedName} está abierto en otro programa. Ciérralo y presiona ENTER para reintentar el guardado....`,
+          placeholder: 'Presiona ENTER para reintentar'
         });
         
-        if (p.isCancel(newName)) {
+        if (p.isCancel(confirmRetry)) {
           throw new Error('CANCELLED');
         }
-        savedName = newName;
       } else {
         throw new Error(`No se pudo escribir en el archivo "${savedName}" (puede ser por disco lleno o restricciones de sistema): ${err.message}`);
       }

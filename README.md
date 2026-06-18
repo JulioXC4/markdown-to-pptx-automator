@@ -1,121 +1,142 @@
 # Markdown to PPTX Automator CLI
 
+![Node.js](https://img.shields.io/badge/Node.js-v18+-green.svg)
+![Gemini AI](https://img.shields.io/badge/Gemini_AI-Google-blue.svg)
+![GitHub API](https://img.shields.io/badge/GitHub_API-v3-black.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 Markdown to PPTX Automator es una potente herramienta de interfaz de línea de comandos (CLI) escrita en Node.js que convierte de forma automatizada documentación técnica en formato Markdown alojada en GitHub en presentaciones de PowerPoint (`.pptx`) estilizadas y estructuradas por Inteligencia Artificial.
 
-El principal objetivo de la herramienta es optimizar la creación de diapositivas para reuniones, exposiciones o entregas de proyectos, permitiendo a los desarrolladores y equipos pasar de documentos técnicos densos a presentaciones listas para exponer en minutos, con la opción de importarlas en **Canva** de forma 100% gratuita.
+El principal objetivo de la herramienta es optimizar la creación de diapositivas para reuniones, exposiciones o entregas de proyectos, permitiendo a los desarrolladores y equipos pasar de documentos técnicos densos a presentaciones profesionales en minutos, con la opción de importarlas en **Canva** de forma 100% gratuita.
 
 ---
 
-## 🚀 Características Principales (Features)
+## 🚀 Características Pro (Pro Features)
 
-* **Descarga e Indexación de GitHub**: Analiza el índice central (`00-cover.md` u otro) del repositorio para identificar secciones específicas (ej. 5.1 a 6.1.1), mapear qué archivos físicos les corresponden y extraer su contenido.
-* **Extracción Multiplataforma de Imágenes**: Detecta automáticamente imágenes referenciadas en el Markdown (tanto en sintaxis estándar como en etiquetas HTML `<img>`), resolviendo rutas relativas complejas locales del repositorio o descargándolas desde URLs externas (ej. Imgur).
-* **Resiliencia y Reintentos Inteligentes (Retry/Backoff)**: Mitiga errores de red y límites de API (ej. código HTTP `429` de rate-limiting) mediante reintentos automáticos con retroceso exponencial (*Exponential Backoff*).
-* **Sistema de Caché Inteligente (Resume/New)**: Guarda el estado de la descarga del texto y las imágenes en `.cache_payload.json`. Si el script se interrumpe, al reiniciar ofrecerá reanudar directamente desde la fase del LLM o descartar el progreso para realizar una nueva descarga limpia.
-* **Modelos de Contingencia (IA Fallbacks)**: Si el modelo de IA predeterminado falla por saturación o error `503 Service Unavailable`, la herramienta realiza reintentos y rota de forma automática entre una lista de candidatos alternativos (`gemini-2.5-flash`, `gemini-1.5-flash`, `gemini-1.5-pro`).
-* **Degradación Elegante (Raw Fallback)**: En caso de caída total de la API de IA, la aplicación permite generar una presentación "cruda" a partir del Markdown estructurado por encabezados y secciones de forma local, asegurando que nunca pierdas tu trabajo.
-* **Layouts de Diseño Adaptativos**: Genera diapositivas con tipografía, espaciados y paleta de colores premium. Soporta layouts adaptativos automáticos: de dos columnas si la diapositiva tiene imágenes (preservando su relación de aspecto original con `contain`), de una columna si es solo texto, o de tipo `image-focus` para centrar diagramas y capturas de pantalla a tamaño completo.
-* **Seguimiento Detallado de Tokens**: Informa detalladamente en consola al terminar el uso de tokens de prompt, tokens recuperados desde caché de contexto, tokens de salida y el total consumido.
+* **Asistente de Configuración (Setup Wizard)**: Permite seleccionar interactivamente el Motor de IA (Gemini 1.5 Flash vs Gemini 1.5 Pro con costos estimados) y el Tema de Diseño de las diapositivas al arrancar.
+* **Temas Visuales Dinámicos**: Soporte dinámico para 3 estilos de presentación:
+  * *Clásico Académico*: Fondo blanco, textos oscuros y acentos en azul real.
+  * *Minimalista SaaS (Modo Oscuro)*: Fondo carbón/oscuro, textos claros y acentos en morado y cian neón.
+  * *Corporativo*: Fondo gris claro, textos gris oscuro y acentos en verde esmeralda.
+* **Pipeline de Doble Pasada (Multi-pass Pipeline)**: Implementa un flujo multi-agente donde un primer agente extrae y estructura las diapositivas, y un segundo agente (el "Profesor Revisor") actúa como experto académico en la temática indicada para enriquecer textos y dar un tono profesional.
+* **Consola Visual "Zero-Scroll"**: Interfaz limpia que actualiza el progreso en una sola línea mediante spinners interactivos, evitando inundar la terminal de logs innecesarios.
+* **Caché de Resiliencia (Resume/New)**: Guarda estados de descarga de texto e imágenes en `.cache_payload.json` permitiendo reanudar o reconfigurar aspectos estéticos instantáneamente sin consumir APIs externas ni re-descargar de GitHub.
+* **Resiliencia ante Errores 503/429**: Implementa *Exponential Backoff* y rotación inteligente de modelos de Gemini en caso de alta demanda.
+* **Manejo Definitivo de Archivos Bloqueados (EBUSY)**: Si el archivo final `.pptx` está abierto en otro programa, la consola pausará y esperará la entrada del usuario de manera no bloqueante en lugar de abortar o renombrar incorrectamente.
+* **Salida Limpia y Segura (SIGINT)**: Captura interrupciones (Ctrl+C) de forma elegante para limpiar recursos temporales (`temp_assets` y archivos `.tmp`) y terminar de forma adecuada.
 
 ---
 
-## 📋 Requisitos Previos (Prerequisites)
+## ⚙️ Intelligent Workflow (Doble Pasada)
 
-Para ejecutar esta herramienta, necesitarás:
+La herramienta implementa un pipeline de doble pasada para asegurar el máximo rigor académico y alineación visual:
+
+```mermaid
+graph TD
+    A[Repositorio GitHub] -->|1. Extracción de Markdown| B[Texto Consolidado]
+    A -->|2. Resolución de Rutas| C[Descarga de Imágenes Locales/Remotas]
+    B -->|3. Prompt Extractor| D[Agente 1: Extractor y Diseñador]
+    C -->|Asociación Contextual Lógica| D
+    D -->|4. JSON Borrador Diapositivas| E[Agente 2: Profesor Universitario]
+    E -->|5. Enriquecimiento Académico| F[JSON Final Pulido]
+    F -->|6. Renderizador de Plantilla| G[Generación de Diapositivas .pptx]
+```
+
+1. **Pasada 1 (Agente Extractor)**: Procesa la documentación y la lista de imágenes garantizando una asociación contextual lógica y directa (ej. asociar la imagen de interfaz al slide de UI).
+2. **Pasada 2 (Profesor Revisor)**: Adopta la identidad de un experto universitario en la materia elegida por el usuario para expandir viñetas escuetas, pulir términos y añadir rigor académico sin inventar funcionalidad técnica ni alterar el mapeo de imágenes.
+
+---
+
+## 📋 Requisitos Previos
+
+Necesitarás disponer de:
 1. **Node.js**: Versión 18.0.0 o superior instalada.
-2. **GitHub Personal Access Token (PAT)**:
-   * Ve a **GitHub ➔ Settings ➔ Developer Settings ➔ Personal Access Tokens (Tokens classic)**.
-   * Genera un nuevo token con permisos de lectura (`repo`) para acceder a tu repositorio objetivo.
-3. **Gemini API Key**:
-   * Obtén una clave de API gratuita en el portal de [Google AI Studio](https://aistudio.google.com/).
+2. **GitHub Personal Access Token (PAT)** con permisos de lectura (`repo`).
+3. **Gemini API Key** desde [Google AI Studio](https://aistudio.google.com/).
 
 ---
 
 ## 📦 Instalación y Configuración
 
-1. **Clona** este repositorio en tu máquina local:
+1. **Clona** el repositorio:
    ```bash
    git clone https://github.com/tu-usuario/MarkdownToPptxAutomator.git
    cd MarkdownToPptxAutomator
    ```
-2. **Instala** las dependencias requeridas del proyecto:
+2. **Instala** las dependencias:
    ```bash
    npm install
    ```
-3. **Configura** las variables de entorno:
-   * Duplica el archivo `.env.example` y renómbralo a `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   * Abre el archivo `.env` y añade tus credenciales correspondientes:
-     ```env
-     GITHUB_TOKEN=tu_personal_access_token_de_github
-     GEMINI_API_KEY=tu_api_key_de_gemini
-     ```
+3. **Configura** las variables de entorno duplicando `.env.example` a `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   Llena las variables de entorno en el archivo `.env`:
+   ```env
+   GITHUB_TOKEN=tu_personal_access_token_de_github
+   GEMINI_API_KEY=tu_api_key_de_gemini
+   ```
 
 ---
 
-## 🎮 Uso (Usage)
+## 🎮 Demostración Visual de Consola
 
-Para iniciar la aplicación, ejecuta el siguiente comando en la raíz del proyecto:
-```bash
-npm start
-```
+Así se ve el flujo de ejecución interactivo en terminal:
 
-### Ejemplo de Flujo de Interacción
+```text
+Markdown to PPTX Automator CLI
 
-Al iniciar, el programa te guiará paso a paso a través de la terminal:
-1. **Detección de caché (opcional)**: Si el script detecta una ejecución anterior incompleta, mostrará:
-   `[INFO] Se detectó información local de: organizacion/proyecto (Secciones 5.1 a 6.2).`
-   Te preguntará si deseas reanudar o ignorar los datos.
-2. **Introducción del Repositorio**: `owner/repo` (ej. `facebook/react`).
-3. **Rama Git**: Por defecto `main`.
-4. **Archivo Índice (TOC)**: Archivo donde reside la tabla de contenidos. Por defecto `00-cover.md`.
-5. **Título de la Presentación**: Título para la portada de las diapositivas.
-6. **Rango de Secciones**: Introduce la sección inicial (ej. `5.1`) y la sección final (ej. `6.1.1`).
+[INFO] Se detectó información local de: owner/repo (Secciones 5.1 a 6.1.1).
 
-### Flujo de Trabajo Técnico Interno
+Selecciona el Motor de IA (AI Engine):
+● Gemini 1.5 Flash (Recomendado) - Rápido y económico. Promedio: ~$0.003 USD por PPTX.
+○ Gemini 1.5 Pro - Mayor razonamiento, ideal para lógica compleja. Promedio: ~$0.15 USD por PPTX.
 
-```
-[Inicio CLI] ➔ [Validar .env] ➔ [Leer TOC en GitHub] 
-                 │
-  ┌──────────────┴──────────────┐
-  ▼ (Si no hay caché)           ▼ (Si se elige reanudar caché)
-[Descargar Archivos .md]     [Validar/Descargar imágenes faltantes]
-[Descargar imágenes y assets]    │
-[Guardar caché local]            │
-  │                              │
-  └──────────────┬───────────────┘
-                 ▼
-[Resumir con Gemini (Flash/Pro)] ➔ [Falla API?] ➔ Sí ➔ [Preguntar generar diapositivas crudas]
-                 │                                      │
-                 No                                     │
-                 ▼                                      ▼
-[Generar presentacion.pptx] ◄───────────────────────────┘
-[Limpiar archivos temporales]
-[Reporte de Tokens Consumidos]
+Selecciona el Tema de Diseño para el PPTX:
+● Clásico Académico: Fondo blanco, texto negro, acentos en azul oscuro.
+○ Minimalista SaaS: Diseño en modo oscuro (fondo dark/carbón), texto blanco, con acentos en morado y cian neón.
+○ Corporativo: Fondo gris claro, texto gris oscuro, acentos en verde esmeralda.
+
+GitHub [Repository]  ---> [EXTRACTING] ---> Local Cache
+
+✔ Índice cargado. Se encontraron 12 secciones.
+✔ Contenido extraído. Largo: 25430 caracteres. Imágenes detectadas: 3.
+⠋ Sincronizando multimedia: [3/3] imágenes procesadas...
+✔ Multimedia sincronizada. Procesadas 3 imágenes.
+
+Local Cache [Data]   ---> [PROCESSING] ---> AI Expert Review
+
+[EXPERT] El modelo gemini-1.5-flash está revisando y elevando el nivel académico de tus diapositivas...
+
+✔ Gemini completó el análisis. Se estructuraron 10 diapositivas.
+
+AI Expert [Final]    ---> [RENDERING]  ---> presentacion.pptx
+
+⠋ Procesando diapositiva 10 de 10...
+✔ Presentación PowerPoint generada.
+
+[TOKENS] Consumo de la API de Gemini:
+- Tokens de prompt (entrada): 14205
+- Tokens de respuesta (salida): 2304
+- Tokens totales: 16509
+- Costo estimado de esta presentación: ~$0.001756 USD (Calculado con tarifas de Gemini 1.5 Flash)
+
+Proceso completado con éxito. La presentación se guardó como: presentacion.pptx
 ```
 
 ---
 
-## 📂 Estructura del Proyecto
+## 📂 Estructura de Código
 
-* **`src/index.js`**: El orquestador principal. Controla el flujo asíncrono, los estados de los spinners, la caché y gestiona la limpieza final en bloque `finally` para evitar archivos temporales huérfanos.
-* **`src/cli.js`**: Maneja la interacción en terminal usando la librería `@clack/prompts` e implementa la detección de caché e inicializaciones del CLI libres de emojis para mantener un tono profesional.
-* **`src/github.js`**: Interactúa con la API de GitHub para descargar y analizar el índice (`00-cover.md`), resolver rutas de imágenes locales relativas basándose en la ubicación del markdown y segmentar el texto consolidado.
-* **`src/llm.js`**: Módulo de IA que se comunica con el SDK oficial `@google/genai`. Implementa el balance dinámico de texto (más detalle si no hay imagen, concisión si la hay), reintentos con exponencial backoff y rotación inteligente de modelos.
-* **`src/pptx.js`**: Motor gráfico que utiliza `pptxgenjs` para construir la presentación 16:9 de forma directa en disco. Valida permisos del directorio, maneja el control de EBUSY ante archivos bloqueados en PowerPoint y expone un callback para animar el progreso del spinner.
-* **`src/utils.js`**: Utilidades auxiliares que descargan archivos binarios de imágenes (locales y externas) implementando reintentos ante error `429` y resiliencia para no detenerse ante errores `404`.
+* **`src/index.js`**: El orquestador principal. Maneja hooks de señales (SIGINT), transiciones de flujo en la terminal y cálculo del reporte de costos en USD.
+* **`src/cli.js`**: Setup Wizard interactivo y recuperación ágil de caché local.
+* **`src/github.js`**: Conector con GitHub API, parseador de markdown y extractor de imágenes.
+* **`src/llm.js`**: Pipeline multi-agente de doble pasada con reintentos.
+* **`src/pptx.js`**: Generador gráfico de diapositivas 16:9 con control anti-bloqueo EBUSY y temas dinámicos.
+* **`src/utils.js`**: Gestor de descarga asíncrona silenciosa de multimedia con Exponential Backoff.
 
 ---
 
-## 🤝 Contribución
+## 🤝 Contribución y Licencia
 
-Si deseas contribuir a este proyecto:
-1. Haz un **Fork** del repositorio.
-2. Crea una rama para tu mejora: `git checkout -b feature/nueva-mejora`.
-3. Haz commit de tus cambios de forma limpia.
-4. Sube la rama: `git push origin feature/nueva-mejora`.
-5. Envía un **Pull Request** detallando tus modificaciones.
-
-Si encuentras algún problema o bug, no dudes en abrir un **Issue** en la sección correspondiente de GitHub.
+Este proyecto está bajo la Licencia **MIT**. Las contribuciones son bienvenidas mediante Pull Requests e Issues en el repositorio.
