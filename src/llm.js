@@ -4,8 +4,15 @@ import * as p from '@clack/prompts';
 /**
  * Helper interno para llamar a la API de Gemini con reintentos y fallback de modelos
  */
-async function callGeminiWithFallback(ai, prompt, responseSchema) {
-  const modelsList = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+/**
+ * Helper interno para llamar a la API de Gemini con reintentos y fallback de modelos
+ */
+async function callGeminiWithFallback(ai, prompt, responseSchema, preferredModel) {
+  const defaultModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  const modelsList = preferredModel 
+    ? [preferredModel, ...defaultModels].filter((val, idx, self) => self.indexOf(val) === idx)
+    : defaultModels;
+    
   let lastError = null;
 
   for (const model of modelsList) {
@@ -58,10 +65,11 @@ async function callGeminiWithFallback(ai, prompt, responseSchema) {
  * @param {string[]} imageList - Listado de rutas de imágenes disponibles
  * @param {string} presentationTitle - Título general de la presentación
  * @param {string} course - Curso o temática académica
+ * @param {string} modelName - Nombre del modelo preferido
  * @param {string} apiKey - API Key de Gemini
  * @returns {Promise<Object>} Un objeto con la estructura { slides: [...], usage: { ... } }
  */
-export async function summarizeContent(content, imageList, presentationTitle, course, apiKey) {
+export async function summarizeContent(content, imageList, presentationTitle, course, modelName, apiKey) {
   const ai = new GoogleGenAI({ apiKey });
   
   // prompt1: Agente Extractor
@@ -130,7 +138,7 @@ Instrucciones específicas:
   };
 
   p.log.info('[INFO] Iniciando Pasada 1 (Extraccion y estructuracion base)...');
-  const response1 = await callGeminiWithFallback(ai, prompt1, slidesSchema);
+  const response1 = await callGeminiWithFallback(ai, prompt1, slidesSchema, modelName);
   const parsedBase = JSON.parse(response1.text);
   
   p.log.info('[INFO] Pasada 1 completada con exito.');
@@ -149,8 +157,11 @@ ${JSON.stringify(parsedBase, null, 2)}
 Entrega el resultado en estricto formato JSON respetando el mismo esquema.
 `;
 
+  // Animación del Agente Revisor
+  console.log(`\n\x1b[1m\x1b[35m[EXPERT]\x1b[0m El modelo \x1b[36m${modelName}\x1b[0m está revisando y elevando el nivel académico de tus diapositivas...\n`);
+
   p.log.info('[INFO] Iniciando Pasada 2 (Revision academica por el Agente Revisor)...');
-  const response2 = await callGeminiWithFallback(ai, prompt2, slidesSchema);
+  const response2 = await callGeminiWithFallback(ai, prompt2, slidesSchema, modelName);
   const parsedFinal = JSON.parse(response2.text);
   
   p.log.info('[INFO] Pasada 2 completada con exito.');

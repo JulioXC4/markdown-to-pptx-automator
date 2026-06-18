@@ -33,7 +33,7 @@ export function isRemoteUrl(url) {
 /**
  * Ejecuta una función de petición HTTP con reintentos y retroceso exponencial
  */
-async function requestWithRetry(requestFn, retries = 4, delay = 1000) {
+async function requestWithRetry(requestFn, warnings, retries = 4, delay = 1000) {
   for (let i = 0; i < retries; i++) {
     try {
       return await requestFn();
@@ -43,7 +43,9 @@ async function requestWithRetry(requestFn, retries = 4, delay = 1000) {
       
       if (isRateLimit && !isLastRetry) {
         const backoffDelay = delay * Math.pow(2, i);
-        p.log.warn(`[RETRY] Limite de peticiones alcanzado (429). Reintentando en ${backoffDelay}ms...`);
+        if (warnings) {
+          warnings.push(`Limite de peticiones alcanzado (429). Reintentando en ${backoffDelay}ms...`);
+        }
         await new Promise(resolve => setTimeout(resolve, backoffDelay));
       } else {
         throw error;
@@ -58,11 +60,13 @@ async function requestWithRetry(requestFn, retries = 4, delay = 1000) {
  * @param {string} branch - Rama git
  * @param {Array} imageObjects - Lista de objetos { original, resolved }
  * @param {string} token - Token de GitHub
- * @returns {Promise<Object>} Un mapa de { rutaOriginal: rutaLocalTemporal }
+ * @param {Function} onProgress - Callback de progreso (current, total)
+ * @returns {Promise<Object>} Un objeto { pathMap, warnings }
  */
-export async function downloadImages(repo, branch, imageObjects, token) {
+export async function downloadImages(repo, branch, imageObjects, token, onProgress) {
   ensureTempDir();
   const pathMap = {};
+  const warnings = [];
   
   const client = axios.create({
     headers: {
@@ -74,6 +78,10 @@ export async function downloadImages(repo, branch, imageObjects, token) {
 
   for (let i = 0; i < imageObjects.length; i++) {
     const { original, resolved } = imageObjects[i];
+    
+    if (onProgress) {
+      onProgress(i + 1, imageObjects.length);
+    }
     
     // Obtener la extensión original (por defecto .png)
     let ext = path.extname(resolved.split('?')[0]) || '.png';
@@ -87,27 +95,25 @@ export async function downloadImages(repo, branch, imageObjects, token) {
     try {
       let response;
       if (isRemoteUrl(resolved)) {
-        p.log.info(`[INFO] Descargando imagen remota: ${resolved}...`);
         const url = resolved.startsWith('//') ? `https:${resolved}` : resolved;
-        response = await requestWithRetry(() => axios.get(url, { responseType: 'arraybuffer' }));
+        response = await requestWithRetry(() => axios.get(url, { responseType: 'arraybuffer' }), warnings);
       } else {
         const cleanPath = resolved.replace(/^\.\//, '');
-        p.log.info(`[INFO] Descargando imagen de GitHub: ${cleanPath}...`);
         const githubUrl = `https://api.github.com/repos/${repo}/contents/${cleanPath}?ref=${branch}`;
-        response = await requestWithRetry(() => client.get(githubUrl, { responseType: 'arraybuffer' }));
+        response = await requestWithRetry(() => client.get(githubUrl, { responseType: 'arraybuffer' }), warnings);
       }
       
       fs.writeFileSync(localPath, response.data);
       pathMap[original] = localPath;
     } catch (error) {
       if (error.response && error.response.status === 404) {
-        p.log.warn(`[WARN] Imagen no encontrada (404): ${resolved}`);
+        warnings.push(`Imagen no encontrada (404): ${resolved}`);
       } else {
-        p.log.warn(`[WARN] Error al descargar imagen "${resolved}": ${error.message}`);
+        warnings.push(`Error al descargar imagen "${resolved}": ${error.message}`);
       }
       pathMap[original] = null; // Mapear a null si falla para no romper el flujo
     }
   }
   
-  return pathMap;
+  return { pathMap, warnings };
 }
