@@ -120,8 +120,21 @@ export async function runCli() {
     throw new Error('CANCELLED');
   }
 
+  const course = await p.text({
+    message: '5. ¿Para que curso o tematica es esta presentacion? (Ej. Diseno de Experimentos, Ingenieria de Software):',
+    placeholder: 'ej. Ingenieria de Software',
+    validate: (value) => {
+      if (!value) return 'El curso o tematica es obligatorio';
+    }
+  });
+
+  if (p.isCancel(course)) {
+    p.cancel('Operacion cancelada por el usuario.');
+    throw new Error('CANCELLED');
+  }
+
   const startSection = await p.text({
-    message: '5. Seccion de inicio en el indice:',
+    message: '6. Seccion de inicio en el indice:',
     placeholder: 'ej. 5.1',
     validate: (value) => {
       if (!value) return 'La seccion de inicio es obligatoria';
@@ -134,7 +147,7 @@ export async function runCli() {
   }
 
   const endSection = await p.text({
-    message: '6. Seccion de fin en el indice:',
+    message: '7. Seccion de fin en el indice:',
     placeholder: 'ej. 6.1.1',
     validate: (value) => {
       if (!value) return 'La seccion de fin es obligatoria';
@@ -152,6 +165,7 @@ export async function runCli() {
     branch,
     tocPath,
     title,
+    course,
     startSection,
     endSection
   };
