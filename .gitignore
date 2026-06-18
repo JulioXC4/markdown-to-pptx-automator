@@ -1,0 +1,21 @@
+# Dependencias de Node
+node_modules/
+
+# Archivos de configuración local y credenciales (¡Seguridad!)
+.env
+.canva-tokens.json
+
+# Archivos temporales y de caché de la aplicación
+temp_assets/
+.cache_payload.json
+
+# Archivo de presentación generado por defecto
+presentacion.pptx
+presentacion_*.pptx
+
+# Logs de error y depuración
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
