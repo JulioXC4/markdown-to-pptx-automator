@@ -221,3 +221,56 @@ export async function extractRangeContent(repo, branch, sections, startSecNum, e
     images
   };
 }
+
+/**
+ * Descarga el contenido de las secciones introductorias (1.x u otras similares) o el README principal
+ */
+export async function fetchIntroductoryContext(repo, branch, sections, token) {
+  const client = axios.create({
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: 'application/vnd.github.v3.raw',
+      'User-Agent': 'Markdown-to-PPTX-Automator'
+    }
+  });
+  
+  // 1. Intentar buscar secciones 1.1, 1.2, 1.3 o cualquier sección que empiece con "1" o "introduc" o "context" en el índice
+  const introSections = sections.filter(s => 
+    (s.number && s.number.startsWith('1.')) || 
+    (s.text && s.text.toLowerCase().includes('introduc')) ||
+    (s.text && s.text.toLowerCase().includes('context'))
+  );
+  
+  if (introSections.length > 0) {
+    let introContent = '';
+    const uniqueFiles = [...new Set(introSections.map(s => s.file))];
+    for (const file of uniqueFiles) {
+      try {
+        const fileUrl = `https://api.github.com/repos/${repo}/contents/${file}?ref=${branch}`;
+        const response = await client.get(fileUrl);
+        introContent += `\n\n${response.data}`;
+      } catch (e) {
+        // Ignorar si falla algún archivo
+      }
+    }
+    if (introContent.trim()) {
+      return introContent.trim();
+    }
+  }
+
+  // 2. Si no hay secciones, intentar descargar el README principal
+  const readmeNames = ['README.md', 'readme.md', 'README', 'readme'];
+  for (const name of readmeNames) {
+    try {
+      const fileUrl = `https://api.github.com/repos/${repo}/contents/${name}?ref=${branch}`;
+      const response = await client.get(fileUrl);
+      if (response.data) {
+        return response.data.trim();
+      }
+    } catch (e) {
+      // Intentar el siguiente nombre
+    }
+  }
+  
+  return '';
+}
