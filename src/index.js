@@ -1,5 +1,6 @@
 import * as p from '@clack/prompts';
 import fs from 'fs';
+import path from 'path';
 import { runCli } from './cli.js';
 import { parseIndex, extractRangeContent } from './github.js';
 import { downloadImages, cleanupTempDir } from './utils.js';
@@ -7,6 +8,7 @@ import { summarizeContent } from './llm.js';
 import { generatePresentation, parseRawSlides } from './pptx.js';
 
 const CACHE_FILE = '.cache_payload.json';
+const TEMP_DIR = './temp_assets';
 
 // Manejador global de cancelación con Ctrl+C (SIGINT)
 process.on('SIGINT', () => {
@@ -127,7 +129,7 @@ async function main() {
         p.log.info('[INFO] No se encontraron imagenes en las secciones seleccionadas.');
       }
 
-      // Guardar el estado recolectado en la caché local
+      // Guardar el estado recolectado en la caché local (incluyendo la selección manual de diapositivas)
       const cachePayload = {
         config: {
           repo: config.repo,
@@ -135,6 +137,9 @@ async function main() {
           tocPath: config.tocPath,
           title: config.title,
           course: config.course,
+          basePptxPath: config.basePptxPath,
+          inheritStyle: config.inheritStyle,
+          keepSlidesInput: config.keepSlidesInput,
           startSection: config.startSection,
           endSection: config.endSection
         },
@@ -192,16 +197,19 @@ async function main() {
     }
 
     // Animación de flujo: AI Expert -> presentacion.pptx
-    console.log('\n\x1b[36mAI Expert [Final]\x1b[0m    ---> \x1b[1m\x1b[34m[RENDERING]\x1b[0m  ---> \x1b[32mpresentacion.pptx\x1b[0m\n');
+    console.log('\n\x1b[36mAI Expert [Dynamic]   ---> [INHERITING STYLE] ---> Final Merge\x1b[0m\n');
 
     // 6. Crear el archivo PowerPoint (.pptx)
-    s.start(`Generando presentacion PowerPoint (.pptx) con el tema ${config.theme}...`);
+    s.start(`Generando presentacion PowerPoint (.pptx)...`);
     const finalSavedName = await generatePresentation(
       { slides: result.slides },
       config.title,
       imageMap,
       outputFilename,
+      config.basePptxPath,
       config.theme,
+      config.inheritStyle,
+      config.keepSlidesInput,
       (current, total) => {
         s.message(`Procesando diapositiva ${current} de ${total}...`);
       }
@@ -247,8 +255,7 @@ async function main() {
     }
 
     // 9. Éxito final
-    p.outro(`Proceso completado con exito. La presentacion se guardo como: ${finalSavedName}
-Puedes abrir y editar esta presentacion en PowerPoint o importarla en Canva de forma gratuita.`);
+    p.outro(`[SUCCESS] Presentación generada exitosamente. Arrastra ${finalSavedName} a Canva para edición colaborativa en equipo.`);
 
   } catch (error) {
     if (error.message === 'CANCELLED') {

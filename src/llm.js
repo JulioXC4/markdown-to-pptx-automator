@@ -99,6 +99,7 @@ Instrucciones específicas:
    - Define un título corto y directo (máximo 45 caracteres).
    - Asocia la imagen correspondiente de la lista de "IMÁGENES DISPONIBLES". Para las diapositivas de tipo "image-focus", associatedImage es OBLIGATORIA. Si es tipo "bullet" y no hay imagen relevante, pon null.
 7. El resultado debe cumplir estrictamente con el esquema JSON proporcionado.
+8. NO generes diapositivas de portada (carátula), de presentación personal, ni de integrantes del equipo. Comienza directamente con la primera diapositiva de contenido técnico de las secciones solicitadas. Enfócate 100% en resumir las secciones técnicas.
 `;
 
   const slidesSchema = {
@@ -179,3 +180,4 @@ Entrega el resultado en estricto formato JSON respetando el mismo esquema.
     usage: usage
   };
 }
+
